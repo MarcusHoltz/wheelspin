@@ -412,6 +412,70 @@ $botToken = generateBotToken();
   <!-- <link rel="stylesheet" href="./inc/bootstrap.min.css" /> -->
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
   <style>
+/* ============================= */
+/* FLOATING BALLOON BACKGROUND  */
+/* ============================= */
+
+.wheel-container, .spin-btn, .text-center { z-index: 1; }
+.col-lg-4 { z-index: 3; }
+
+
+.text-center small { background-color: white; padding 1px; }
+
+.balloon-background {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: -1; /* Behind content but above body background */
+  pointer-events: none; /* Never block interaction */
+}
+
+.balloon-foreground {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  z-index: 1; /* Behind content but above body background */
+  pointer-events: none; /* Never block interaction */
+}
+
+.balloon {
+  position: absolute;
+  bottom: -160px;
+  width: 70px;
+  opacity: 0.85;
+  animation: floatUp linear infinite;
+}
+
+/* Horizontal placement */
+.b1 { left: 8%; animation-duration: 18s; }
+.b2 { left: 30%; animation-duration: 22s; }
+.b3 { left: 60%; animation-duration: 20s; }
+.b4 { left: 85%; animation-duration: 25s; }
+
+/* Add slight animation offsets */
+.b2 { animation-delay: 5s; }
+.b3 { animation-delay: 9s; }
+.b4 { animation-delay: 13s; }
+
+/* Floating motion */
+@keyframes floatUp {
+  0% {
+    transform: translateY(0) translateX(0);
+  }
+  25% {
+    transform: translateY(-25vh) translateX(15px);
+  }
+  50% {
+    transform: translateY(-50vh) translateX(-15px);
+  }
+  75% {
+    transform: translateY(-75vh) translateX(10px);
+  }
+  100% {
+    transform: translateY(-120vh) translateX(-10px);
+  }
+}
+
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -668,6 +732,82 @@ $botToken = generateBotToken();
   </style>
 </head>
 <body>
+<!-- Floating Balloon Background -->
+<div class="balloon-background">
+  <div class="balloon b1">
+    <svg viewBox="0 0 100 140">
+      <ellipse cx="50" cy="50" rx="35" ry="45" fill="#FF6B6B"/>
+      <polygon points="45,95 55,95 50,105" fill="#d94c4c"/>
+      <line x1="50" y1="105" x2="50" y2="140" stroke="#999" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="balloon b2">
+    <svg viewBox="0 0 100 140">
+      <ellipse cx="50" cy="50" rx="35" ry="45" fill="#4ECDC4"/>
+      <polygon points="45,95 55,95 50,105" fill="#36b3ab"/>
+      <line x1="50" y1="105" x2="50" y2="140" stroke="#999" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="balloon b3">
+    <svg viewBox="0 0 100 140">
+      <ellipse cx="50" cy="50" rx="35" ry="45" fill="#F7DC6F"/>
+      <polygon points="45,95 55,95 50,105" fill="#e6c22f"/>
+      <line x1="50" y1="105" x2="50" y2="140" stroke="#999" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="balloon b4">
+    <svg viewBox="0 0 100 140">
+      <ellipse cx="50" cy="50" rx="35" ry="45" fill="#BB8FCE"/>
+      <polygon points="45,95 55,95 50,105" fill="#9b59b6"/>
+      <line x1="50" y1="105" x2="50" y2="140" stroke="#999" stroke-width="2"/>
+    </svg>
+  </div>
+</div>
+
+
+
+
+<div class="balloon-foreground">
+  <div class="balloon b1">
+    <svg viewBox="0 0 100 140">
+      <ellipse cx="50" cy="50" rx="35" ry="45" fill="#FF6B6B"/>
+      <polygon points="45,95 55,95 50,105" fill="#d94c4c"/>
+      <line x1="50" y1="105" x2="50" y2="140" stroke="#999" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="balloon b2">
+    <svg viewBox="0 0 100 140">
+      <ellipse cx="50" cy="50" rx="35" ry="45" fill="#4ECDC4"/>
+      <polygon points="45,95 55,95 50,105" fill="#36b3ab"/>
+      <line x1="50" y1="105" x2="50" y2="140" stroke="#999" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="balloon b3">
+    <svg viewBox="0 0 100 140">
+      <ellipse cx="50" cy="50" rx="35" ry="45" fill="#F7DC6F"/>
+      <polygon points="45,95 55,95 50,105" fill="#e6c22f"/>
+      <line x1="50" y1="105" x2="50" y2="140" stroke="#999" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <div class="balloon b4">
+    <svg viewBox="0 0 100 140">
+      <ellipse cx="50" cy="50" rx="35" ry="45" fill="#BB8FCE"/>
+      <polygon points="45,95 55,95 50,105" fill="#9b59b6"/>
+      <line x1="50" y1="105" x2="50" y2="140" stroke="#999" stroke-width="2"/>
+    </svg>
+  </div>
+</div>
+
+
+
+
+
   <div class="container">
     <div class="header">
       <h1>🎡 WheelSpin </h1>
@@ -1193,5 +1333,9 @@ document.getElementById('real-confirm-btn').onclick = () => {
       loadSavedWheels();
     });
   </script>
+
+
+
+
 </body>
 </html>
