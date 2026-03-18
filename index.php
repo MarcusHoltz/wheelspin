@@ -838,9 +838,109 @@ $botToken = generateBotToken();
       z-index: 10001;
       pointer-events: none;
     }
+
+    /* =====================================================
+     * DARK MODE
+     * Applied by adding .dark-mode to <body>.
+     * CSS custom properties cascade so Bootstrap components
+     * and our own card/input styles all pick up the overrides.
+     * Reference: https://developer.mozilla.org/en-US/docs/Web/CSS/Using_CSS_custom_properties
+     * ===================================================== */
+    body.dark-mode {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    }
+    body.dark-mode .card {
+      background-color: #1e1e2e;
+      color: #e0e0e0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    body.dark-mode .card h5,
+    body.dark-mode .card p,
+    body.dark-mode .card small,
+    body.dark-mode .card label {
+      color: #c0c0d0;
+    }
+    body.dark-mode .form-control,
+    body.dark-mode .form-select {
+      background-color: #2a2a3e;
+      color: #e0e0e0;
+      border-color: #444466;
+    }
+    body.dark-mode .form-control::placeholder {
+      color: #8888aa;
+    }
+    body.dark-mode .text-muted {
+      color: #8888aa !important;
+    }
+    body.dark-mode .text-center small {
+      background-color: transparent;
+      color: #8888aa;
+    }
+    body.dark-mode .winner-content,
+    body.dark-mode .bot-check-content {
+      background: #1e1e2e;
+      color: #e0e0e0;
+    }
+    body.dark-mode .winner-content h2 {
+      color: #a78bfa;
+    }
+    body.dark-mode .winner-name {
+      color: #c4b5fd;
+    }
+    body.dark-mode .bot-check-content h3 {
+      color: #e0e0e0;
+    }
+    body.dark-mode .bot-check-content p {
+      color: #a0a0b8;
+    }
+    body.dark-mode footer {
+      background: #0d0d1a;
+    }
+
+    /* Dark mode toggle button — fixed upper-right, always accessible.
+     * Uses a sun/moon icon that swaps via CSS content based on body class.
+     * z-index above page content but below modals (9999).
+     * Reference: https://developer.mozilla.org/en-US/docs/Web/CSS/position
+     */
+    #dark-mode-toggle {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 9000;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.6);
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(6px);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      transition: background 0.3s, border-color 0.3s, transform 0.2s;
+      user-select: none;
+    }
+    #dark-mode-toggle:hover {
+      background: rgba(255,255,255,0.28);
+      transform: scale(1.1);
+    }
+    body.dark-mode #dark-mode-toggle {
+      border-color: rgba(180,160,255,0.6);
+      background: rgba(30,30,60,0.7);
+    }
+    body.dark-mode #dark-mode-toggle:hover {
+      background: rgba(60,60,100,0.85);
+    }
   </style>
 </head>
 <body>
+
+<!-- Dark mode toggle — fixed upper-right corner.
+     Icon swaps between moon (light mode) and sun (dark mode) via JS.
+     aria-label provides accessibility for screen readers.
+     Reference: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-label -->
+<button id="dark-mode-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
 
 <!-- Confetti canvas target — populated by confetti script on jQuery ready -->
 <div id="confetti"></div>
@@ -992,7 +1092,7 @@ $botToken = generateBotToken();
 
   <footer>
     <a href="https://www.holtzweb.com">
-      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/Pgo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDIwMDEwOTA0Ly9FTiIKICJodHRwOi8vd3d3LnczLm9yZy9UUi8yMDAxL1JFQy1TVkctMjAwMTA5MDQvRFREL3N2ZzEwLmR0ZCI+CjxzdmcgdmVyc2lvbj0iMS4wIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiB3aWR0aD0iMjMwLjAwMDAwMHB0IiBoZWlnaHQ9IjE2Mi4wMDAwMDBwdCIgdmlld0JveD0iMCAwIDIzMC4wMDAwMDAgMTYyLjAwMDAwMCIKIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIG1lZXQiPgoKPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMC4wMDAwMDAsMTYyLjAwMDAwMCkgc2NhbGUoMC4xMDAwMDAsLTAuMTAwMDAwKSIKZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSJub25lIj4KPHBhdGggZD0iTTE5MCAxMDcwIGwwIC00MDAgLTQwIDAgLTQwIDAgMCA4NSBjMCA4NCAwIDg1IC0yNSA4NSBsLTI1IDAgMCAtMTk1CjAgLTE5NSAyNSAwIGMyNSAwIDI1IDEgMjUgODUgbDAgODUgNDAgMCA0MCAwIDAgLTIzNSAwIC0yMzUgMTAzMCAwIDEwMzAgMCAwCjY2MCAwIDY2MCAtMTAzMCAwIC0xMDMwIDAgMCAtNDAweiBtMjAxMCAtMjYwIGwwIC02MTAgLTk4MCAwIC05ODAgMCAwIDEyNSBjMAo3NyA0IDEyNSAxMCAxMjUgNiAwIDEwIDcyIDEwIDE5NSAwIDEyMyAtNCAxOTUgLTEwIDE5NSAtNiAwIC0xMCAxMDMgLTEwIDI5MApsMCAyOTAgOTgwIDAgOTgwIDAgMCAtNjEweiIvPgo8cGF0aCBkPSJNMzczIDgxNiBjLTI3IC0yNCAtMjggLTI3IC0zMSAtMTQ2IC00IC0xNDIgMCAtMTYzIDM1IC0xOTYgMzggLTM1Cjk1IC0zMyAxMzQgNSBsMjkgMjkgMCAxMzcgMCAxMzcgLTI5IDI5IGMtMzkgMzggLTk3IDQwIC0xMzggNXogbTEwMSAtNDggYzIzCi0zMiAyMyAtMjE0IDAgLTI0NiAtMTcgLTI0IC00MyAtMjkgLTYyIC0xMCAtMTcgMTcgLTE3IDI0OSAwIDI2NiAxOSAxOSA0NSAxNAo2MiAtMTB6Ii8+CjxwYXRoIGQ9Ik02MjAgNjQ1IGwwIC0xOTUgNzAgMCBjNjggMCA3MCAxIDcwIDI1IDAgMjMgLTQgMjUgLTQwIDI1IGwtNDAgMCAwCjE3MCAwIDE3MCAtMzAgMCAtMzAgMCAwIC0xOTV6Ii8+CjxwYXRoIGQ9Ik04NTAgODE1IGMwIC0yMiA0IC0yNSAzNSAtMjUgbDM1IDAgMCAtMTcwIDAgLTE3MCAyNSAwIDI1IDAgMCAxNzAgMAoxNzAgNDAgMCBjMzYgMCA0MCAzIDQwIDI1IGwwIDI1IC0xMDAgMCAtMTAwIDAgMCAtMjV6Ii8+CjxwYXRoIGQ9Ik0xMTMwIDgxNSBjMCAtMjIgNCAtMjUgNDAgLTI1IDIyIDAgNDAgLTMgNDAgLTYgMCAtMyAtMTggLTY1IC00MAotMTM5IC0yMiAtNzQgLTQwIC0xNDggLTQwIC0xNjQgbDAgLTMxIDcwIDAgYzY4IDAgNzAgMSA3MCAyNSAwIDIzIC00IDI1IC00MAoyNSAtMjIgMCAtNDAgMyAtNDAgOCAwIDQgMTggNjggNDAgMTQyIDIyIDc0IDQwIDE0NyA0MCAxNjIgMCAyOCAwIDI4IC03MCAyOAotNjggMCAtNzAgLTEgLTcwIC0yNXoiLz4KPC9nPgo8L3N2Zz4K" alt="Holtzweb.com">
+      <img src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/Pgo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDIwMDEwOTA0Ly9FTiIKICJodHRwOi8vd3d3LnczLm9yZy9UUi8yMDAxL1JFQy1TVkctMjAwMTA5MDQvRFREL3N2ZzEwLmR0ZCI+CjxzdmcgdmVyc2lvbj0iMS4wIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiB3aWR0aD0iMjMwLjAwMDAwMHB0IiBoZWlnaHQ9IjE2Mi4wMDAwMDBwdCIgdmlld0JveD0iMCAwIDIzMC4wMDAwMDAgMTYyLjAwMDAwMCIKIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIG1lZXQiPgoKPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMC4wMDAwMDAsMTYyLjAwMDAwMCkgc2NhbGUoMC4xMDAwMDAsLTAuMTAwMDAwKSIKZmlsbD0iIzAwMDAwMCIgc3Ryb2tlPSJub25lIj4KPHBhdGggZD0iTTE5MCAxMDcwIGwwIC00MDAgLTQwIDAgLTQwIDAgMCA4NSBjMCA4NCAwIDg1IC0yNSA4NSBsLTI1IDAgMCAtMTk1CjAgLTE5NSAyNSAwIGMyNSAwIDI1IDEgMjUgODUgbDAgODUgNDAgMCA0MCAwIDAgLTIzNSAwIC0yMzUgMTAzMCAwIDEwMzAgMCAwCjY2MCAwIDY2MCAtMTAzMCAwIC0xMDMwIDAgMCAtNDAweiBtMjAxMCAtMjYwIGwwIC02MTAgLTk4MCAwIC05ODAgMCAwIDEyNSBjMAo3NyA0IDEyNSAxMCAxMjUgNiAwIDEwIDcyIDEwIDE5NSAwIDEyMyAtNCAxOTUgLTEwIDE5NSAtNiAwIC0xMCAxMDMgLTEwIDI5MAppIDI5MCA5ODAgMCA5ODAgMCAwIC02MXoiLz4KPHBhdGggZD0iTTM3MyA4MTYgYy0yNyAtMjQgLTI4IC0yNyAtMzEgLTE0NiAtNCAtMTQyIDAgLTE2MyAzNSAtMTk2IDM4IC0zNQo5NSAtMzMgMTM0IDUgbDI5IDI5IDAgMTM3IDAgMTM3IC0yOSAyOSBjLTM5IDM4IC05NyA0MCAtMTM4IDV6IG0xMDEgLTQ4IGMyMwotMzIgMjMgLTIxNCAwIC0yNDYgLTE3IC0yNCAtNDMgLTI5IC02MiAtMTAgLTE3IDE3IC0xNyAyNDkgMCAyNjYgMTkgMTkgNDUgMTQKNjIgLTEweiIvPgo8cGF0aCBkPSJNNjIwIDY0NSBsMCAtMTk1IDcwIDAgYzY4IDAgNzAgMSA3MCAyNSAwIDIzIC00IDI1IC00MCAyNSBsLTQwIDAgMAoxNzAgMCAxNzAgLTMwIDAgLTMwIDAgMCAtMTk1eiIvPgo8cGF0aCBkPSJNODUwIDgxNSBjMCAtMjIgNCAtMjUgMzUgLTI1IGwzNSAwIDAgLTE3MCAwIC0xNzAgMjUgMCAyNSAwIDAgMTcwIDAKMTcwIDQwIDAgYzM2IDAgNDAgMyA0MCAyNSBsMCkyNSAtMTAwIDAgLTEwMCAwIDAgLTI1eiIvPgo8cGF0aCBkPSJNMTEzMCA4MTUgYzAgLTIyIDQgLTI1IDQwIC0yNSAyMiAwIDQwIC0zIDQwIC02IDAgLTMgLTE4IC02NSAtNDAKLTEzOSAtMjIgLTc0IC00MCAtMTQ4IC00MCAtMTY0IGwwIC0zMSA3MCAwIGM2OCAwIDcwIDEgNzAgMjUgMCAyMyAtNCAyNSAtNDAKMjUgLTIyIDAgLTQwIDMgLTQwIDggMCA0IDE4IDY4IDQwIDE0MiAyMiA3NCA0MCAxNDcgNDAgMTYyIDAgMjggMCAyOCAtNzAgMjgKLTY4IDAgLTcwIC0xIC03MCAtMjV6Ii8+CjwvZz4KPC9zdmc+Cg==" alt="Holtzweb.com">
       <span><a href="https://www.holtzweb.com/spin">www.holtzweb.com/spin</a></span>
     </a>
   </footer>
@@ -1972,6 +2072,39 @@ document.getElementById('real-confirm-btn').onclick = () => {
     /* $(window).resize: https://api.jquery.com/resize/ */
     $(window).resize(function () { window.confettiAnim.resize(); });
   });
+  </script>
+  <!-- Dark mode — reads/writes a cookie so preference survives page reloads
+       and token refreshes (the page reloads after save/delete).
+       Cookie max-age: 1 year (31536000 seconds).
+       document.cookie reference: https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie -->
+  <script>
+  (function () {
+    var COOKIE = 'wheelspin_darkmode';
+
+    function getCookie(name) {
+      var match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+      return match ? match[1] : null;
+    }
+
+    function setCookie(name, value) {
+      document.cookie = name + '=' + value + '; max-age=31536000; path=/; SameSite=Lax';
+    }
+
+    function applyDark(on) {
+      document.body.classList.toggle('dark-mode', on);
+      document.getElementById('dark-mode-toggle').textContent = on ? '☀️' : '🌙';
+    }
+
+    /* Apply saved preference immediately on load. */
+    var saved = getCookie(COOKIE);
+    if (saved === '1') { applyDark(true); }
+
+    document.getElementById('dark-mode-toggle').addEventListener('click', function () {
+      var isDark = document.body.classList.contains('dark-mode');
+      applyDark(!isDark);
+      setCookie(COOKIE, isDark ? '0' : '1');
+    });
+  }());
   </script>
 
 </body>
