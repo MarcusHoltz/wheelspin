@@ -345,7 +345,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'load') {
-        $id = $_POST['id'] ?? '';https://github.com/CrazyTim/spin-wheel
+        $id = $_POST['id'] ?? '';
 
         if (!validateWheelId($id)) {
             http_response_code(400);
@@ -556,11 +556,87 @@ $botToken = generateBotToken();
       margin: 20px auto;
       display: block;
       cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
 
     .spin-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    /* === Button press animations ===
+     *
+     * Three layered effects all driven by CSS, triggered by adding .btn-fired via JS.
+     *
+     * 1. btn-pop: scale down then spring back (physical press feel)
+     *    Reference: https://developer.mozilla.org/en-US/docs/Web/CSS/animation
+     *
+     * 2. btn-glow: outer glow pulse radiating outward from the button
+     *    Uses box-shadow expansion + opacity fade.
+     *
+     * 3. .ripple span: strong white radial burst from the exact click point,
+     *    larger and more opaque than before, clipped by overflow:hidden.
+     *
+     * The .btn-fired class is added on click and removed by animationend (JS).
+     */
+    .spin-btn.btn-fired {
+      animation: btn-pop 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both,
+                 btn-glow 0.5s ease-out both;
+    }
+
+    @keyframes btn-pop {
+      0%   { transform: scale(1); }
+      20%  { transform: scale(0.91); }
+      55%  { transform: scale(1.06); }
+      80%  { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+
+    @keyframes btn-glow {
+      0%   { box-shadow: 0 0 0 0 rgba(255,255,255,0.85); }
+      40%  { box-shadow: 0 0 0 18px rgba(255,255,255,0.25); }
+      100% { box-shadow: 0 0 0 36px rgba(255,255,255,0); }
+    }
+
+    /* Shine sweep — a white diagonal highlight that slides across the button.
+     * Implemented via a ::before pseudo-element on .btn-fired.
+     * skewX(-20deg) gives the angled edge; translateX(-150%) to translateX(250%)
+     * moves it fully across the button width.
+     * Reference: https://developer.mozilla.org/en-US/docs/Web/CSS/transform-function/skewX
+     */
+    .spin-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 60%;
+      height: 100%;
+      background: linear-gradient(120deg, rgba(255,255,255,0) 30%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0) 70%);
+      transform: skewX(-20deg) translateX(-150%);
+      pointer-events: none;
+    }
+    .spin-btn.btn-fired::before {
+      animation: btn-shine 0.45s ease-out forwards;
+    }
+    @keyframes btn-shine {
+      to { transform: skewX(-20deg) translateX(250%); }
+    }
+
+    /* Ripple: strong white burst from click point */
+    .spin-btn .ripple {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      background: rgba(255, 255, 255, 0.75);
+      animation: ripple-fade 0.6s linear;
+      pointer-events: none;
+    }
+    @keyframes ripple-fade {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
     }
 
     .item-row {
@@ -729,9 +805,49 @@ $botToken = generateBotToken();
         max-width: 350px;
       }
     }
+
+    /* Bezier particle burst canvas — fires on winner Close button click.
+     * Fixed full-screen so particle coordinates map directly to screen pixels.
+     * pointer-events:none — must never block interaction with the page underneath.
+     * z-index 10002: above confetti (10001) so both can coexist without clipping.
+     * Canvas is resized to match the viewport on each trigger call.
+     * Reference: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
+     */
+    #drawing_canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10002;
+    }
+
+    /* Confetti overlay — sits above winner-modal (z-index:9999) and bot-check-modal (z-index:10000)
+     * pointer-events:none lets the Close button remain clickable through the canvas.
+     * No display:none used — a hidden div has offsetWidth/Height of 0, which would
+     * cause the canvas to initialize at 0x0 pixels and never size correctly.
+     * Reference: https://developer.mozilla.org/en-US/docs/Web/CSS/pointer-events
+     */
+    #confetti {
+      height: 100%;
+      left: 0;
+      position: fixed;
+      top: 0;
+      width: 100%;
+      z-index: 10001;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
+
+<!-- Confetti canvas target — populated by confetti script on jQuery ready -->
+<div id="confetti"></div>
+
+<!-- Bezier particle burst canvas — populated by closeWinner() on Close click -->
+<canvas id="drawing_canvas"></canvas>
+
 <!-- Floating Balloon Background -->
 <div class="balloon-background">
   <div class="balloon b1">
@@ -807,7 +923,6 @@ $botToken = generateBotToken();
 
 
 
-
   <div class="container">
     <div class="header">
       <h1>🎡 WheelSpin </h1>
@@ -853,7 +968,7 @@ $botToken = generateBotToken();
     <div class="winner-content">
       <h2>🎉 Winner! 🎉</h2>
       <div class="winner-name" id="winner-name"></div>
-      <button class="btn btn-primary" onclick="document.getElementById('winner-modal').style.display='none'">Close</button>
+      <button class="btn btn-primary" onclick="closeWinner(this)">Close</button>
     </div>
   </div>
 
@@ -958,7 +1073,7 @@ $botToken = generateBotToken();
     document.getElementById('honeypot-1').onclick = () => {
       console.log('Honeypot 1 clicked - bot detected');
       honeypotClicked = true;
-      hideBotCheckModal();https://github.com/CrazyTim/spin-wheel
+      hideBotCheckModal();
       alert('Security verification failed. Please try again.');
     };
 
@@ -1098,12 +1213,47 @@ document.getElementById('real-confirm-btn').onclick = () => {
       });
     }
 
+    /* closeWinner — hides the winner modal then fires the bezier particle burst
+     * from the screen position of the Close button that was clicked.
+     * window.triggerBezierBurst is assigned by the canvas particle script below.
+     */
+    function closeWinner(btn) {
+      /* Capture rect BEFORE hiding the modal.
+       * getBoundingClientRect() returns all zeros once display:none is applied —
+       * that was causing the burst to originate from (0,0), i.e. the top-left corner.
+       * Reference: https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect
+       */
+      if (typeof window.triggerBezierBurst === 'function') {
+        var rect = btn.getBoundingClientRect();
+        window.triggerBezierBurst(
+          rect.left + rect.width  * 0.5,
+          rect.top  + rect.height * 0.5
+        );
+      }
+      document.getElementById('winner-modal').style.display = 'none';
+    }
+
     function showWinner(name) {
       /* textContent for XSS prevention
        * Reference: https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent
        */
       document.getElementById('winner-name').textContent = name;
       document.getElementById('winner-modal').style.display = 'flex';
+
+      /* CONFETTI_SPAWN_MS: how long the whole animation runs before draining.
+       * One timer, one variable. When it fires, papers stop spawning normally.
+       * Ribbons that are still above the viewport get moved to y=0 so they
+       * enter and exit quickly rather than taking 20+ seconds off-screen.
+       * Ribbons already visible on screen finish falling naturally.
+       */
+      var CONFETTI_SPAWN_MS = 2500;
+
+      if (window.confettiAnim) {
+        window.confettiAnim.start();
+        setTimeout(function () {
+          window.confettiAnim.drain();
+        }, CONFETTI_SPAWN_MS);
+      }
     }
 
     document.getElementById('add-item-btn').onclick = () => {
@@ -1123,7 +1273,29 @@ document.getElementById('real-confirm-btn').onclick = () => {
       renderItems();
     };
 
-    document.getElementById('spin-btn').onclick = () => {
+    document.getElementById('spin-btn').onclick = (event) => {
+      /* Three CSS animations fire via .btn-fired class (pop, glow, shine).
+       * Ripple span is still injected for the click-point burst.
+       * .btn-fired is removed once the longest animation (glow, 0.5s) ends.
+       * Reference: https://developer.mozilla.org/en-US/docs/Web/API/Element/classList
+       */
+      const btn  = document.getElementById('spin-btn');
+      const rect = btn.getBoundingClientRect();
+
+      btn.classList.remove('btn-fired');
+      void btn.offsetWidth; /* force reflow so re-clicking restarts the animation */
+      btn.classList.add('btn-fired');
+      btn.addEventListener('animationend', () => btn.classList.remove('btn-fired'), { once: true });
+
+      const circle = document.createElement('span');
+      const size   = Math.max(rect.width, rect.height);
+      circle.className    = 'ripple';
+      circle.style.width  = circle.style.height = size + 'px';
+      circle.style.left   = (event.clientX - rect.left - size / 2) + 'px';
+      circle.style.top    = (event.clientY - rect.top  - size / 2) + 'px';
+      btn.appendChild(circle);
+      circle.addEventListener('animationend', () => circle.remove());
+
       console.log('Spin clicked');
       if (items.length < 2) {
         alert('Add at least 2 items!');
@@ -1334,8 +1506,473 @@ document.getElementById('real-confirm-btn').onclick = () => {
     });
   </script>
 
+  <!-- Bezier particle burst — adapted from original by Tom Patricio / Codepen.
+       Modifications from the source:
+         1. Phase 0 (Loader circle) removed entirely — we go straight to particles.
+         2. Phase 1 (Exploader shrink) removed entirely — same reason.
+         3. Canvas is sized to the full viewport on each trigger call so screen-space
+            coordinates from getBoundingClientRect() map 1:1 to canvas pixels.
+         4. Particle origin is passed in as (originX, originY) from closeWinner()
+            instead of always using the canvas centre.
+         5. Animation loop stops and clears the canvas once all particles complete
+            rather than looping forever.
+         6. window.triggerBezierBurst() exposes the trigger to closeWinner() above.
+       Easing equations from http://gizma.com/easing/ — included verbatim. -->
+  <script>
+  (function () {
 
+    var TWO_PI  = Math.PI * 2;
+    var HALF_PI = Math.PI * 0.5;
+    var timeStep = 1 / 60;
 
+    var drawingCanvas = document.getElementById('drawing_canvas');
+    var ctx;
+    var viewWidth, viewHeight;
+    var particles = [];
+    var rafId     = null;  /* requestAnimationFrame handle for cancellation */
+
+    function Point(x, y) {
+      this.x = x || 0;
+      this.y = y || 0;
+    }
+
+    /* Particle travels along a cubic bezier path with a wobble (sy) on the minor axis.
+     * Reference: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillRect
+     */
+    function Particle(p0, p1, p2, p3) {
+      this.p0 = p0; this.p1 = p1; this.p2 = p2; this.p3 = p3;
+      this.time     = 0;
+      this.duration = 3 + Math.random() * 2;
+      this.color    = '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+      this.w        = 8;
+      this.h        = 6;
+      this.complete = false;
+    }
+
+    Particle.prototype = {
+      update: function () {
+        this.time = Math.min(this.duration, this.time + timeStep);
+        var f  = Ease.outCubic(this.time, 0, 1, this.duration);
+        var p  = cubeBezier(this.p0, this.p1, this.p2, this.p3, f);
+        var dx = p.x - this.x;
+        var dy = p.y - this.y;
+        this.r    = Math.atan2(dy, dx) + HALF_PI;
+        this.sy   = Math.sin(Math.PI * f * 10);
+        this.x    = p.x;
+        this.y    = p.y;
+        this.complete = (this.time === this.duration);
+      },
+      draw: function () {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.r);
+        ctx.scale(1, this.sy);
+        ctx.fillStyle = this.color;
+        ctx.fillRect(-this.w * 0.5, -this.h * 0.5, this.w, this.h);
+        ctx.restore();
+      }
+    };
+
+    var Ease = {
+      outCubic: function (t, b, c, d) {
+        t /= d; t--;
+        return c * (t * t * t + 1) + b;
+      }
+    };
+
+    /* Cubic bezier interpolation
+     * Reference: https://en.wikipedia.org/wiki/B%C3%A9zier_curve#Cubic_B%C3%A9zier_curves
+     */
+    function cubeBezier(p0, c0, c1, p1, t) {
+      var p  = new Point();
+      var nt = 1 - t;
+      p.x = nt*nt*nt*p0.x + 3*nt*nt*t*c0.x + 3*nt*t*t*c1.x + t*t*t*p1.x;
+      p.y = nt*nt*nt*p0.y + 3*nt*nt*t*c0.y + 3*nt*t*t*c1.y + t*t*t*p1.y;
+      return p;
+    }
+
+    function checkParticlesComplete() {
+      for (var i = 0; i < particles.length; i++) {
+        if (!particles[i].complete) return false;
+      }
+      return true;
+    }
+
+    function createParticles(originX, originY) {
+      particles.length = 0;
+      for (var i = 0; i < 128; i++) {
+        var p0 = new Point(originX, originY);
+        var p1 = new Point(Math.random() * viewWidth,  Math.random() * viewHeight);
+        var p2 = new Point(Math.random() * viewWidth,  Math.random() * viewHeight);
+        /* End point below the viewport so particles always fall off-screen */
+        var p3 = new Point(Math.random() * viewWidth,  viewHeight + 64);
+        particles.push(new Particle(p0, p1, p2, p3));
+      }
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, viewWidth, viewHeight);
+
+      particles.forEach(function (p) { p.update(); });
+      particles.forEach(function (p) { p.draw();   });
+
+      if (checkParticlesComplete()) {
+        /* All particles finished — clear canvas and stop the loop */
+        ctx.clearRect(0, 0, viewWidth, viewHeight);
+        rafId = null;
+        return;
+      }
+
+      /* requestAnimationFrame reference:
+       * https://developer.mozilla.org/en-US/docs/Web/API/Window/requestAnimationFrame
+       */
+      rafId = requestAnimationFrame(loop);
+    }
+
+    /* Public trigger — called by closeWinner() with the button's screen-space centre.
+     * Canvas is resized to the current viewport each call so coordinates stay accurate
+     * if the window has been resized since the page loaded.
+     * If a previous burst is still running, cancel it cleanly before starting a new one.
+     */
+    window.triggerBezierBurst = function (originX, originY) {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+
+      viewWidth  = window.innerWidth;
+      viewHeight = window.innerHeight;
+      drawingCanvas.width  = viewWidth;
+      drawingCanvas.height = viewHeight;
+      ctx = drawingCanvas.getContext('2d');
+
+      createParticles(originX, originY);
+      rafId = requestAnimationFrame(loop);
+    };
+
+  }());
+  </script>
+
+  <!-- jQuery required by confetti script below
+       Reference: https://api.jquery.com/ready/ -->
+  <script src="https://code.jquery.com/jquery-1.11.0.js"></script>
+
+  <!-- Confetti — adapted from Patrik Svensson (http://metervara.net)
+       Two modifications from the original source:
+         1. Instance stored on window.confettiAnim instead of a closure-local var
+            so showWinner() (vanilla JS, outside this jQuery scope) can call
+            .start() and .stop() on demand.
+         2. Auto-start removed — confetti only runs when showWinner() triggers it. -->
+  <script>
+  $(document).ready(function () {
+    var frameRate = 30;
+    var dt = 1.0 / frameRate;
+    var DEG_TO_RAD = Math.PI / 180;
+    var colors = [
+      ['#df0049', '#660671'],
+      ['#00e857', '#005291'],
+      ['#2bebbc', '#05798a'],
+      ['#ffd200', '#b06c00']
+    ];
+
+    function Vector2(_x, _y) {
+      this.x = _x; this.y = _y;
+      this.Length = function () { return Math.sqrt(this.x * this.x + this.y * this.y); };
+      this.Add = function (_v) { this.x += _v.x; this.y += _v.y; };
+      this.Sub = function (_v) { this.x -= _v.x; this.y -= _v.y; };
+      this.Div = function (_f) { this.x /= _f; this.y /= _f; };
+      this.Mul = function (_f) { this.x *= _f; this.y *= _f; };
+      this.Normalized = function () {
+        var sq = this.x * this.x + this.y * this.y;
+        if (sq !== 0) { var f = 1.0 / Math.sqrt(sq); return new Vector2(this.x * f, this.y * f); }
+        return new Vector2(0, 0);
+      };
+    }
+    Vector2.Sub = function (_a, _b) { return new Vector2(_a.x - _b.x, _a.y - _b.y); };
+
+    function EulerMass(_x, _y, _mass, _drag) {
+      this.position = new Vector2(_x, _y);
+      this.mass = _mass; this.drag = _drag;
+      this.force = new Vector2(0, 0);
+      this.velocity = new Vector2(0, 0);
+      this.AddForce = function (_f) { this.force.Add(_f); };
+      this.Integrate = function (_dt) {
+        var acc = new Vector2(this.force.x, this.force.y);
+        var speed = Math.sqrt(this.velocity.x * this.velocity.x + this.velocity.y * this.velocity.y);
+        var drag = new Vector2(this.velocity.x, this.velocity.y);
+        drag.Mul(this.drag * this.mass * speed);
+        acc.Sub(drag);
+        acc.Div(this.mass);
+        var pos = new Vector2(this.velocity.x, this.velocity.y);
+        pos.Mul(_dt);
+        this.position.Add(pos);
+        acc.Mul(_dt);
+        this.velocity.Add(acc);
+        this.force = new Vector2(0, 0);
+      };
+    }
+
+    function ConfettiPaper(_x, _y) {
+      this.pos = new Vector2(_x, _y);
+      this.rotationSpeed = Math.random() * 600 + 800;
+      this.angle = DEG_TO_RAD * Math.random() * 360;
+      this.rotation = DEG_TO_RAD * Math.random() * 360;
+      this.cosA = 1.0;
+      this.size = 5.0;
+      this.oscillationSpeed = Math.random() * 1.5 + 0.5;
+      this.xSpeed = 40.0;
+      this.ySpeed = Math.random() * 60 + 50.0;
+      this.corners = [];
+      this.time = Math.random();
+      var ci = Math.round(Math.random() * (colors.length - 1));
+      this.frontColor = colors[ci][0];
+      this.backColor = colors[ci][1];
+      for (var i = 0; i < 4; i++) {
+        this.corners[i] = new Vector2(
+          Math.cos(this.angle + DEG_TO_RAD * (i * 90 + 45)),
+          Math.sin(this.angle + DEG_TO_RAD * (i * 90 + 45))
+        );
+      }
+      this.Update = function (_dt) {
+        this.time += _dt;
+        this.rotation += this.rotationSpeed * _dt;
+        this.cosA = Math.cos(DEG_TO_RAD * this.rotation);
+        this.pos.x += Math.cos(this.time * this.oscillationSpeed) * this.xSpeed * _dt;
+        this.pos.y += this.ySpeed * _dt;
+        if (this.pos.y > ConfettiPaper.bounds.y) {
+          /* Only respawn if spawning is active.
+           * When draining, let pieces fall off and stay off.
+           */
+          if (ConfettiPaper.spawning) {
+            this.pos.x = Math.random() * ConfettiPaper.bounds.x;
+            this.pos.y = 0;
+          }
+        }
+      };
+      this.Draw = function (_g) {
+        _g.fillStyle = this.cosA > 0 ? this.frontColor : this.backColor;
+        _g.beginPath();
+        _g.moveTo(this.pos.x + this.corners[0].x * this.size, this.pos.y + this.corners[0].y * this.size * this.cosA);
+        for (var i = 1; i < 4; i++) {
+          _g.lineTo(this.pos.x + this.corners[i].x * this.size, this.pos.y + this.corners[i].y * this.size * this.cosA);
+        }
+        _g.closePath();
+        _g.fill();
+      };
+    }
+    ConfettiPaper.bounds = new Vector2(0, 0);
+    /* spawning flag checked in Update() — false means pieces are not reset when they fall off.
+     * Declared as a property on the constructor (static) so all instances share one value.
+     */
+    ConfettiPaper.spawning = false;
+
+    function ConfettiRibbon(_x, _y, _count, _dist, _thick, _angle, _mass, _drag) {
+      this.particleDist = _dist; this.particleCount = _count;
+      this.particleMass = _mass; this.particleDrag = _drag;
+      this.particles = [];
+      var ci = Math.round(Math.random() * (colors.length - 1));
+      this.frontColor = colors[ci][0]; this.backColor = colors[ci][1];
+      this.xOff = Math.cos(DEG_TO_RAD * _angle) * _thick;
+      this.yOff = Math.sin(DEG_TO_RAD * _angle) * _thick;
+      this.position = new Vector2(_x, _y);
+      this.prevPosition = new Vector2(_x, _y);
+      this.velocityInherit = Math.random() * 2 + 4;
+      this.time = Math.random() * 100;
+      this.oscillationSpeed = Math.random() * 2 + 2;
+      this.oscillationDistance = Math.random() * 40 + 40;
+      this.ySpeed = Math.random() * 80 + 160; /* 2x original 80-120 range */
+      for (var i = 0; i < _count; i++) {
+        this.particles[i] = new EulerMass(_x, _y - i * _dist, _mass, _drag);
+      }
+      this.Reset = function () {
+        this.done = false;
+        this.position.y = -Math.random() * ConfettiRibbon.bounds.y;
+        this.position.x = Math.random() * ConfettiRibbon.bounds.x;
+        this.prevPosition = new Vector2(this.position.x, this.position.y);
+        this.velocityInherit = Math.random() * 2 + 4;
+        this.time = Math.random() * 100;
+        this.oscillationSpeed = Math.random() * 2.0 + 1.5;
+        this.oscillationDistance = Math.random() * 40 + 40;
+        this.ySpeed = Math.random() * 80 + 160; /* 2x original 80-120 range */
+        var ci2 = Math.round(Math.random() * (colors.length - 1));
+        this.frontColor = colors[ci2][0]; this.backColor = colors[ci2][1];
+        this.particles = [];
+        for (var i = 0; i < this.particleCount; i++) {
+          this.particles[i] = new EulerMass(this.position.x, this.position.y - i * this.particleDist, this.particleMass, this.particleDrag);
+        }
+      };
+      this.Update = function (_dt) {
+        var i;
+        this.time += _dt * this.oscillationSpeed;
+        this.position.y += this.ySpeed * _dt;
+        this.position.x += Math.cos(this.time) * this.oscillationDistance * _dt;
+        this.particles[0].position = this.position;
+        var dX = this.prevPosition.x - this.position.x;
+        var dY = this.prevPosition.y - this.position.y;
+        var delta = Math.sqrt(dX * dX + dY * dY);
+        this.prevPosition = new Vector2(this.position.x, this.position.y);
+        for (i = 1; i < this.particleCount; i++) {
+          var dirP = Vector2.Sub(this.particles[i - 1].position, this.particles[i].position);
+          dirP = dirP.Normalized();
+          dirP.Mul((delta / _dt) * this.velocityInherit);
+          this.particles[i].AddForce(dirP);
+        }
+        for (i = 1; i < this.particleCount; i++) { this.particles[i].Integrate(_dt); }
+        for (i = 1; i < this.particleCount; i++) {
+          var rp2 = new Vector2(this.particles[i].position.x, this.particles[i].position.y);
+          rp2.Sub(this.particles[i - 1].position);
+          var n = rp2.Normalized(); n.Mul(this.particleDist); n.Add(this.particles[i - 1].position);
+          this.particles[i].position = n;
+        }
+        if (this.position.y > ConfettiRibbon.bounds.y + this.particleDist * this.particleCount) {
+          if (ConfettiRibbon.spawning) {
+            this.Reset();
+          } else {
+            /* Drain mode: lead has exited. Mark done so the context skips
+             * Update and Draw for this ribbon, stopping the tail particles
+             * from continuing to render on-screen due to physics lag.
+             */
+            this.done = true;
+          }
+        }
+      };
+      this.Side = function (x1, y1, x2, y2, x3, y3) {
+        return (x1 - x2) * (y3 - y2) - (y1 - y2) * (x3 - x2);
+      };
+      this.Draw = function (_g) {
+        for (var i = 0; i < this.particleCount - 1; i++) {
+          var p0 = new Vector2(this.particles[i].position.x + this.xOff, this.particles[i].position.y + this.yOff);
+          var p1 = new Vector2(this.particles[i + 1].position.x + this.xOff, this.particles[i + 1].position.y + this.yOff);
+          var color = this.Side(
+            this.particles[i].position.x, this.particles[i].position.y,
+            this.particles[i + 1].position.x, this.particles[i + 1].position.y,
+            p1.x, p1.y
+          ) < 0 ? this.frontColor : this.backColor;
+          _g.fillStyle = color; _g.strokeStyle = color;
+          _g.beginPath();
+          if (i === 0) {
+            _g.moveTo(this.particles[i].position.x, this.particles[i].position.y);
+            _g.lineTo(this.particles[i + 1].position.x, this.particles[i + 1].position.y);
+            _g.lineTo((this.particles[i + 1].position.x + p1.x) * 0.5, (this.particles[i + 1].position.y + p1.y) * 0.5);
+          } else if (i === this.particleCount - 2) {
+            _g.moveTo(this.particles[i].position.x, this.particles[i].position.y);
+            _g.lineTo(this.particles[i + 1].position.x, this.particles[i + 1].position.y);
+            _g.lineTo((this.particles[i].position.x + p0.x) * 0.5, (this.particles[i].position.y + p0.y) * 0.5);
+          } else {
+            _g.moveTo(this.particles[i].position.x, this.particles[i].position.y);
+            _g.lineTo(this.particles[i + 1].position.x, this.particles[i + 1].position.y);
+            _g.lineTo(p1.x, p1.y); _g.lineTo(p0.x, p0.y);
+          }
+          _g.closePath(); _g.stroke(); _g.fill();
+        }
+      };
+    }
+    ConfettiRibbon.bounds = new Vector2(0, 0);
+    ConfettiRibbon.spawning = false;
+
+    var ConfettiContext = function (parent) {
+      var i;
+      var canvasParent = document.getElementById(parent);
+      var canvas = document.createElement('canvas');
+      canvas.width = canvasParent.offsetWidth;
+      canvas.height = canvasParent.offsetHeight;
+      canvasParent.appendChild(canvas);
+      var context = canvas.getContext('2d');
+      var confettiRibbonCount = 7;
+      var rpCount = 30, rpDist = 8.0, rpThick = 8.0;
+      var confettiRibbons = [];
+      ConfettiRibbon.bounds = new Vector2(canvas.width, canvas.height);
+      for (i = 0; i < confettiRibbonCount; i++) {
+        confettiRibbons[i] = new ConfettiRibbon(
+          Math.random() * canvas.width, -Math.random() * canvas.height * 2,
+          rpCount, rpDist, rpThick, 45, 1, 0.05
+        );
+      }
+      var confettiPaperCount = 25;
+      var confettiPapers = [];
+      ConfettiPaper.bounds = new Vector2(canvas.width, canvas.height);
+      for (i = 0; i < confettiPaperCount; i++) {
+        confettiPapers[i] = new ConfettiPaper(Math.random() * canvas.width, Math.random() * canvas.height);
+      }
+      this.resize = function () {
+        canvas.width = canvasParent.offsetWidth;
+        canvas.height = canvasParent.offsetHeight;
+        ConfettiPaper.bounds = new Vector2(canvas.width, canvas.height);
+        ConfettiRibbon.bounds = new Vector2(canvas.width, canvas.height);
+      };
+      this.start = function () {
+        this.stop();
+        /* Enable respawning and clear any done flags from a previous drain run. */
+        ConfettiPaper.spawning  = true;
+        ConfettiRibbon.spawning = true;
+        for (var r = 0; r < confettiRibbonCount; r++) { confettiRibbons[r].done = false; }
+        var self = this;
+        /* setInterval reference: https://developer.mozilla.org/en-US/docs/Web/API/Window/setInterval */
+        this.interval = setInterval(function () { self.update(); }, 1000.0 / frameRate);
+      };
+      this.stop = function () { clearInterval(this.interval); };
+      /* drain() — stop spawning everything. Papers fall off naturally (fast).
+       * Ribbons that are still entirely above the viewport (position.y < 0)
+       * would take 20+ seconds to naturally arrive and exit, so we move them
+       * to y=0 — they fall through and off-screen in a few seconds at normal
+       * speed, with no jarring instant disappearance.
+       */
+      this.drain = function () {
+        ConfettiPaper.spawning  = false;
+        ConfettiRibbon.spawning = false;
+        for (var r = 0; r < confettiRibbonCount; r++) {
+          if (confettiRibbons[r].position.y < 0) {
+            confettiRibbons[r].position.y = 0;
+            confettiRibbons[r].prevPosition.y = 0;
+            for (var p = 0; p < confettiRibbons[r].particles.length; p++) {
+              confettiRibbons[r].particles[p].position.y = 0 - p * confettiRibbons[r].particleDist;
+            }
+          }
+        }
+      };
+      this.update = function () {
+        var j, allGone;
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        for (j = 0; j < confettiPaperCount; j++) { confettiPapers[j].Update(dt); confettiPapers[j].Draw(context); }
+        for (j = 0; j < confettiRibbonCount; j++) {
+          /* Skip ribbons that have exited in drain mode — stops tail particles rendering. */
+          if (!confettiRibbons[j].done) {
+            confettiRibbons[j].Update(dt);
+            confettiRibbons[j].Draw(context);
+          }
+        }
+
+        /* When both spawning flags are off, stop the loop once every piece
+         * has left the canvas.
+         */
+        if (!ConfettiPaper.spawning && !ConfettiRibbon.spawning) {
+          allGone = true;
+          for (j = 0; j < confettiPaperCount; j++) {
+            if (confettiPapers[j].pos.y <= canvas.height) { allGone = false; break; }
+          }
+          if (allGone) {
+            for (j = 0; j < confettiRibbonCount; j++) {
+              if (!confettiRibbons[j].done) { allGone = false; break; }
+            }
+          }
+          if (allGone) {
+            this.stop();
+            context.clearRect(0, 0, canvas.width, canvas.height);
+          }
+        }
+      };
+    };
+
+    /* Assign to window so showWinner() can call .start() / .stop() across scopes.
+     * Reference: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Property_accessors
+     */
+    window.confettiAnim = new ConfettiContext('confetti');
+    /* No auto-start — triggered on demand by showWinner() only. */
+
+    /* $(window).resize: https://api.jquery.com/resize/ */
+    $(window).resize(function () { window.confettiAnim.resize(); });
+  });
+  </script>
 
 </body>
 </html>
