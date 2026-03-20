@@ -411,6 +411,23 @@ $botToken = generateBotToken();
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
   <!-- <link rel="stylesheet" href="./inc/bootstrap.min.css" /> -->
   <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" sizes="57x57" href="apple-icon-57x57.png">
+  <link rel="apple-touch-icon" sizes="60x60" href="apple-icon-60x60.png">
+  <link rel="apple-touch-icon" sizes="72x72" href="apple-icon-72x72.png">
+  <link rel="apple-touch-icon" sizes="76x76" href="apple-icon-76x76.png">
+  <link rel="apple-touch-icon" sizes="114x114" href="apple-icon-114x114.png">
+  <link rel="apple-touch-icon" sizes="120x120" href="apple-icon-120x120.png">
+  <link rel="apple-touch-icon" sizes="144x144" href="apple-icon-144x144.png">
+  <link rel="apple-touch-icon" sizes="152x152" href="apple-icon-152x152.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-icon-180x180.png">
+  <link rel="icon" type="image/png" sizes="192x192"  href="android-icon-192x192.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="msapplication-TileColor" content="#1E1E2D">
+  <meta name="msapplication-TileImage" content="ms-icon-144x144.png">
+  <meta name="theme-color" content="#1E1E2D">
   <style>
 /* ============================= */
 /* FLOATING BALLOON BACKGROUND  */
@@ -811,8 +828,12 @@ $botToken = generateBotToken();
      * pointer-events:none — must never block interaction with the page underneath.
      * z-index 10002: above confetti (10001) so both can coexist without clipping.
      * Canvas is resized to match the viewport on each trigger call.
+     * Centering in the Unknown - CSS-Tricks
      * Reference: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D
      */
+
+
+/*
     #drawing_canvas {
       position: fixed;
       top: 0;
@@ -822,6 +843,20 @@ $botToken = generateBotToken();
       pointer-events: none;
       z-index: 10002;
     }
+*/
+
+
+#drawing_canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    transform: translate(-50%, -50%);
+    max-width: 1680px;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10002;
+}
 
     /* Confetti overlay — sits above winner-modal (z-index:9999) and bot-check-modal (z-index:10000)
      * pointer-events:none lets the Close button remain clickable through the canvas.
@@ -1346,7 +1381,7 @@ document.getElementById('real-confirm-btn').onclick = () => {
        * enter and exit quickly rather than taking 20+ seconds off-screen.
        * Ribbons already visible on screen finish falling naturally.
        */
-      var CONFETTI_SPAWN_MS = 2500;
+      var CONFETTI_SPAWN_MS = 6565;
 
       if (window.confettiAnim) {
         window.confettiAnim.start();
