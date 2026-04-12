@@ -1,6 +1,6 @@
 # 🎡 WheelSpin
 
-A self-hosted spinning wheel application with save capabilities, bot protection, and rate limiting.
+A self-hosted spinning wheel application with save capabilities, bot protection, constant balloons floating, confetti animations, and rate limiting.
 
 ---
 
