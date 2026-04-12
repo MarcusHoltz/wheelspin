@@ -2,6 +2,8 @@
 
 A self-hosted spinning wheel application with save capabilities, bot protection, and rate limiting.
 
+For 🎈 and 🎉🎊 see the [balloon](../../tree/balloon) branch.
+
 ---
 
 ## ⚙️ How It Works
