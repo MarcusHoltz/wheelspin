@@ -6,6 +6,10 @@ For 🎈 and 🎉🎊 see the [balloon](../../tree/balloon) branch.
 
 ---
 
+![Spin a wheel, make a choice - Wheelspin app](https://raw.githubusercontent.com/MarcusHoltz/marcusholtz.github.io/refs/heads/main/assets/img/posts/wheelspin-spin-a-wheel-to-make-a-choice.png "Click all you want, you cant spin this wheel - this is an image")
+
+---
+
 ## ⚙️ How It Works
 
 1. **Save/Delete** → Requires bot check modal + rate limit check (1 second cooldown)
